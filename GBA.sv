@@ -249,6 +249,7 @@ parameter CONF_STR = {
 	"H1O[6],Cheats Enabled,Yes,No;",
 	"-;",
 	"O[127:126],UserIO Joystick,Off,DB9MD,DB15 ;",
+	"O[125],Buttons Mapping,Name,Positional;",
 	"-;",
 	"D0R[12],Reload Backup RAM;",
 	"D0R[13],Save Backup RAM;",
@@ -350,8 +351,16 @@ wire [32:0] RTC_time;
 
 wire[127:0] status_in = cart_download ? {status[127:39],ss_slot,status[36:19],3'b000,status[15:0]} : {status[127:39],ss_slot,status[36:19],2'b00,status[16:0]};
 
-//SM ABYXUDLR
-wire [31:0] joy_unmod = joydbena ? (OSD_STATUS? 32'b000000 : {joydb[10], joydb[11]|(joydb[10]&joydb[5]), joydb[8],joydb[7],joydb[4],joydb[5],joydb[3:0]}) : joy_unmod_USB;
+wire [31:0] joy_unmod = joydbena ?
+	!status[125] ? {
+		//SM ABYXUDLR
+		OSD_STATUS? 32'b000000 : {joydb[10], joydb[11]|(joydb[10]&joydb[5]), joydb[8],joydb[7],joydb[5:0]}
+	}:
+	{
+		//SM BAYXUDLR
+		OSD_STATUS? 32'b000000 : {joydb[10], joydb[11]|(joydb[10]&joydb[5]), joydb[8],joydb[7],joydb[4],joydb[5],joydb[3:0]}
+	}
+: joy_unmod_USB;
 
 wire [15:0] joydb = JOY_FLAG[1] ? JOYDB9MD_1 : JOY_FLAG[0] ? JOYDB15_1 : '0;
 wire        joydbena = |JOY_FLAG[1:0]              ;
