@@ -182,7 +182,7 @@ module emu
 assign ADC_BUS  = 'Z;
 
 wire         CLK_JOY = CLK_50M;         //Assign clock between 40-50Mhz
-wire   [2:0] JOY_FLAG  = {status[62],status[63],status[61]}; //Assign 3 bits of status (31:29) o (63:61)
+wire   [2:0] JOY_FLAG  = {status[126],status[127],status[125]}; //Assign 3 bits of status (31:29) o (63:61) o (127:125)
 wire         JOY_CLK, JOY_LOAD, JOY_SPLIT, JOY_MDSEL;
 wire   [5:0] JOY_MDIN  = JOY_FLAG[2] ? {USER_IN[6],USER_IN[3],USER_IN[5],USER_IN[7],USER_IN[1],USER_IN[2]} : '1;
 wire         JOY_DATA  = JOY_FLAG[1] ? USER_IN[5] : '1;
@@ -248,8 +248,9 @@ parameter CONF_STR = {
 	"-;",
 	"OH,Dupe Save to GBA 2,Off,On;",
 	"-;",
-	"oUV,UserIO Joystick,Off,DB9MD,DB15 ;",
-	"oT,UserIO Players, 1 Player,2 Players;",
+	"O[127:126],UserIO Joystick,Off,DB9MD,DB15 ;",
+	"O[125],UserIO Players, 1 Player,2 Players;",
+	"O[124],Buttons Mapping,Name,Positional;",
 	"-;",
 	"D0RC,Reload Backup RAM;",
 	"D0RD,Save Backup RAM;",
@@ -272,7 +273,7 @@ parameter CONF_STR = {
 };
 
 wire  [1:0] buttons;
-wire [63:0] status;
+wire[127:0] status;
 wire [15:0] status_menumask = {1'b0, 1'b0, cart_loaded, |cart_type, 1'b0, 1'b1, ~bk_ena};
 wire        forced_scandoubler;
 reg  [31:0] sd_lba;
@@ -303,9 +304,27 @@ wire [15:0] sdram_sz;
 
 wire [32:0] RTC_time;
 
-//SM ABYXUDLR
-wire [31:0] joy1 = joydb_1ena ? (OSD_STATUS? 32'b000000 : {joydb_1[10], joydb_1[11]|(joydb_1[10]&joydb_1[5]), joydb_1[8],joydb_1[7],joydb_1[4],joydb_1[5],joydb_1[3:0]}) : joy1_USB;
-wire [31:0] joy2 = joydb_2ena ? (OSD_STATUS? 32'b000000 : {joydb_2[10], joydb_2[11]|(joydb_2[10]&joydb_2[5]), joydb_2[8],joydb_2[7],joydb_2[4],joydb_2[5],joydb_2[3:0]}) : joy2_USB;
+wire [31:0] joy1 = joydb_1ena ?
+        !status[124] ? {
+                //SM ABYXUDLR
+                OSD_STATUS? 32'b000000 : {joydb_1[10], joydb_1[11]|(joydb_1[10]&joydb_1[5]), joydb_1[8],joydb_1[7],joydb_1[5:0]}
+        }:
+        {
+                //SM BAYXUDLR
+                OSD_STATUS? 32'b000000 : {joydb_1[10], joydb_1[11]|(joydb_1[10]&joydb_1[5]), joydb_1[8],joydb_1[7],joydb_1[4],joydb_1[5],joydb_1[3:0]}
+        }
+: joy1_USB;
+
+wire [31:0] joy2 = joydb_2ena ?
+        !status[124] ? {
+                //SM ABYXUDLR
+                OSD_STATUS? 32'b000000 : {joydb_2[10], joydb_2[11]|(joydb_2[10]&joydb_2[5]), joydb_2[8],joydb_2[7],joydb_2[5:0]}
+        }:
+        {
+                //SM BAYXUDLR
+                OSD_STATUS? 32'b000000 : {joydb_2[10], joydb_2[11]|(joydb_2[10]&joydb_2[5]), joydb_2[8],joydb_2[7],joydb_2[4],joydb_2[5],joydb_2[3:0]}
+        }
+: joydb_1ena ? joy1_USB : joy2_USB;
 
 wire [15:0] joydb_1 = JOY_FLAG[2] ? JOYDB9MD_1 : JOY_FLAG[1] ? JOYDB15_1 : '0;
 wire [15:0] joydb_2 = JOY_FLAG[2] ? JOYDB9MD_2 : JOY_FLAG[1] ? JOYDB15_2 : '0;
