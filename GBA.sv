@@ -182,7 +182,7 @@ module emu
 assign ADC_BUS  = 'Z;
 
 wire         CLK_JOY = CLK_50M;         //Assign clock between 40-50Mhz
-wire   [1:0] JOY_FLAG  = {status[62],status[63]}; //Assign 2 bits of status (62:61)
+wire   [1:0] JOY_FLAG  = {status[126],status[127]}; //Assign 2 bits of status (127:126)
 wire         JOY_CLK, JOY_LOAD, JOY_SPLIT, JOY_MDSEL;
 wire   [5:0] JOY_MDIN  = JOY_FLAG[1] ? {USER_IN[6],USER_IN[3],USER_IN[5],USER_IN[7],USER_IN[1],USER_IN[2]} : '1;
 wire         JOY_DATA  = JOY_FLAG[0] ? USER_IN[5] : '1;
@@ -248,7 +248,7 @@ parameter CONF_STR = {
 	"C,Cheats;",
 	"H1O[6],Cheats Enabled,Yes,No;",
 	"-;",
-	"oUV,UserIO Joystick,Off,DB9MD,DB15 ;",
+	"O[127:126],UserIO Joystick,Off,DB9MD,DB15 ;",
 	"-;",
 	"D0R[12],Reload Backup RAM;",
 	"D0R[13],Save Backup RAM;",
@@ -315,7 +315,7 @@ parameter CONF_STR = {
 };
 
 wire  [1:0] buttons;
-wire [63:0] status;
+wire[127:0] status;
 wire [15:0] status_menumask = {~solar_quirk, status[27], cart_loaded, |cart_type, force_turbo, ~gg_active, ~bk_ena};
 wire        forced_scandoubler;
 reg  [31:0] sd_lba;
@@ -348,7 +348,7 @@ wire [15:0] joystick_analog_0;
 
 wire [32:0] RTC_time;
 
-wire [63:0] status_in = cart_download ? {status[63:39],ss_slot,status[36:19],3'b000,status[15:0]} : {status[63:39],ss_slot,status[36:19],2'b00,status[16:0]};
+wire[127:0] status_in = cart_download ? {status[127:39],ss_slot,status[36:19],3'b000,status[15:0]} : {status[127:39],ss_slot,status[36:19],2'b00,status[16:0]};
 
 //SM ABYXUDLR
 wire [31:0] joy_unmod = joydbena ? (OSD_STATUS? 32'b000000 : {joydb[10], joydb[11]|(joydb[10]&joydb[5]), joydb[8],joydb[7],joydb[4],joydb[5],joydb[3:0]}) : joy_unmod_USB;
