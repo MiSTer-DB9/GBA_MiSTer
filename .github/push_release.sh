@@ -3,10 +3,10 @@
 
 set -euo pipefail
 
-CORE_NAME=(GBA2P GBA)
+CORE_NAME=(GBA2P)
 MAIN_BRANCH="GBA2P"
-COMPILATION_INPUT=(GBA.qpf GBA.qpf)
-COMPILATION_OUTPUT=(output_files/GBA.rbf output_files/GBA.rbf)
+COMPILATION_INPUT=(GBA.qpf)
+COMPILATION_OUTPUT=(output_files/GBA.rbf)
 QUARTUS_IMAGE="theypsilon/quartus-lite-c5:17.0.2.docker0"
 
 if [[ "${FORCED:-false}" != "true" ]] && \
