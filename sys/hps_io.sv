@@ -329,9 +329,6 @@ always@(posedge clk_sys) begin : uio_block
 			cmd <= io_din;
 
 			casex(io_din)
-				// [MiSTer-DB9 BEGIN] - DB9/SNAC8 support: joy_raw command handler
-				  'h0f: io_dout <= joy_raw;
-				// [MiSTer-DB9 END]
 				  'h16: begin io_dout <= {1'b1, sd_blk_cnt[sdn], BLKSZ[2:0], sdn, sd_wr[sdn], sd_rd[sdn]}; sdn_r <= sdn; end
 				'h0X17,
 				'h0X18: begin sd_ack <= disk[VD:0]; sdn_ack <= io_din[11:8]; end
@@ -360,6 +357,10 @@ always@(posedge clk_sys) begin : uio_block
 		end else begin
 
 			casex(cmd)
+				// Reading user_io raw joy
+				// [MiSTer-DB9 BEGIN] - DB9/SNAC8 support: joy_raw command handler
+				'h0f: io_dout <= joy_raw;
+				// [MiSTer-DB9 END]
 				// buttons and switches
 				'h01: cfg <= io_din;
 				'h02: if(byte_cnt==1) joystick_0[15:0] <= io_din; else joystick_0[31:16] <= io_din;
