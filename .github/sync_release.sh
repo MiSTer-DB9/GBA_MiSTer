@@ -8,7 +8,7 @@ CORE_NAME=(GBA2P GBA)
 MAIN_BRANCH="GBA2P"
 COMPILATION_INPUT=(GBA.qpf GBA.qpf)
 COMPILATION_OUTPUT=(output_files/GBA.rbf output_files/GBA.rbf)
-QUARTUS_IMAGE="theypsilon/quartus-lite-c5:17.0.docker0"
+QUARTUS_IMAGE="theypsilon/quartus-lite-c5:17.0.2.docker0"
 
 echo "Fetching upstream:"
 git remote remove upstream 2> /dev/null || true

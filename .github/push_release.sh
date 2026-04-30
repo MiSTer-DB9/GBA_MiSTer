@@ -7,7 +7,7 @@ CORE_NAME=(GBA2P GBA)
 MAIN_BRANCH="GBA2P"
 COMPILATION_INPUT=(GBA.qpf GBA.qpf)
 COMPILATION_OUTPUT=(output_files/GBA.rbf output_files/GBA.rbf)
-QUARTUS_IMAGE="theypsilon/quartus-lite-c5:17.0.docker0"
+QUARTUS_IMAGE="theypsilon/quartus-lite-c5:17.0.2.docker0"
 
 if [[ "${FORCED:-false}" != "true" ]] && \
    [[ "$(git log -n 1 --pretty=format:%an)" == "The CI/CD Bot" ]] && \
