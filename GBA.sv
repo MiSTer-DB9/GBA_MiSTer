@@ -391,11 +391,11 @@ wire[127:0] status_in = cart_download ? {status[127:39],ss_slot,status[36:19],3'
 wire [31:0] joy_unmod = joydb_1ena ?
 	!status[125] ? {
 		//SM ABYXUDLR
-		OSD_STATUS? 32'b000000 : {joydb_1[10], joydb_1[11]|(joydb_1[10]&joydb_1[5]), joydb_1[8],joydb_1[7],joydb_1[5:0]}
+		OSD_STATUS? 32'b000000 : {joydb_1[10], joydb_1[11], joydb_1[8],joydb_1[7],joydb_1[5:0]}
 	}:
 	{
 		//SM BAYXUDLR
-		OSD_STATUS? 32'b000000 : {joydb_1[10], joydb_1[11]|(joydb_1[10]&joydb_1[5]), joydb_1[8],joydb_1[7],joydb_1[4],joydb_1[5],joydb_1[3:0]}
+		OSD_STATUS? 32'b000000 : {joydb_1[10], joydb_1[11], joydb_1[8],joydb_1[7],joydb_1[4],joydb_1[5],joydb_1[3:0]}
 	}
 : joy_unmod_USB;
 // [MiSTer-DB9 END]
