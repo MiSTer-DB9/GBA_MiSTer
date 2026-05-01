@@ -349,12 +349,12 @@ wire [32:0] RTC_time;
 // [MiSTer-DB9 BEGIN] - DB9/SNAC8 support: joydb_1/2ena selectors (2P core; status[125] is UserIO Players, no Buttons Mapping toggle)
 wire [31:0] joy1 = joydb_1ena ? {
         //SM ABYXUDLR
-        OSD_STATUS? 32'b000000 : {joydb_1[10], joydb_1[11]|(joydb_1[10]&joydb_1[5]), joydb_1[8],joydb_1[7],joydb_1[5:0]}
+        OSD_STATUS? 32'b000000 : {joydb_1[10], joydb_1[11], joydb_1[8],joydb_1[7],joydb_1[5:0]}
 } : joy1_USB;
 
 wire [31:0] joy2 = joydb_2ena ? {
         //SM ABYXUDLR
-        OSD_STATUS? 32'b000000 : {joydb_2[10], joydb_2[11]|(joydb_2[10]&joydb_2[5]), joydb_2[8],joydb_2[7],joydb_2[5:0]}
+        OSD_STATUS? 32'b000000 : {joydb_2[10], joydb_2[11], joydb_2[8],joydb_2[7],joydb_2[5:0]}
 } : joydb_1ena ? joy1_USB : joy2_USB;
 // [MiSTer-DB9 END]
 
