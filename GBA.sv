@@ -287,8 +287,12 @@ parameter CONF_STR = {
 	"C,Cheats;",
 	"H1O[6],Cheats Enabled,Yes,No;",
 	"-;",
+	// [MiSTer-DB9-Pro BEGIN] - Saturn-first joy_type (1P-only core: no joy_2p line)
 	"O[127:126],UserIO Joystick,Off,Saturn,DB9MD,DB15;",
+	// [MiSTer-DB9-Pro END]
+	// [MiSTer-DB9 BEGIN] - SNAC8 Buttons Mapping option
 	"O[125],Buttons Mapping,Name,Positional;",
+	// [MiSTer-DB9 END]
 	"-;",
 	"D0R[12],Reload Backup RAM;",
 	"D0R[13],Save Backup RAM;",
@@ -390,6 +394,7 @@ wire [32:0] RTC_time;
 
 wire[127:0] status_in = cart_download ? {status[127:39],ss_slot,status[36:19],3'b000,status[15:0]} : {status[127:39],ss_slot,status[36:19],2'b00,status[16:0]};
 
+// [MiSTer-DB9 BEGIN] - SNAC8 joydb_1 → joy_unmod with Buttons Mapping (status[125]) selector
 wire [31:0] joy_unmod = joydb_1ena ?
 	!status[125] ? {
 		//SM ABYXUDLR
@@ -400,6 +405,7 @@ wire [31:0] joy_unmod = joydb_1ena ?
 		OSD_STATUS? 32'b000000 : {joydb_1[10], joydb_1[11], joydb_1[8],joydb_1[7],joydb_1[4],joydb_1[5],joydb_1[3:0]}
 	}
 : joy_unmod_USB;
+// [MiSTer-DB9 END]
 
 
 
