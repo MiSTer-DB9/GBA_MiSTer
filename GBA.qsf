@@ -52,16 +52,6 @@ set_global_assignment -name PLACEMENT_EFFORT_MULTIPLIER 1.0
 set_global_assignment -name SEED 1
 set_global_assignment -name VERILOG_MACRO "MISTER_FB=1"
 
-# [MiSTer-DB9 BEGIN] - Quartus Lite fitter workaround
-# Force register duplication on high-fanout gb_bus_out.Adr to relieve
-# Lite-fitter setup violation on `gb_bus_out.Adr -> rotate_data` barrel
-# rotator. Without this, Lite produces ~1.2 ns negative slack on clk_sys
-# and SDRAM/VRAM data corrupts -> flickering colored lines on screen.
-# Brings Lite 17.0.2 timing to parity with Standard 17.0.2.
-# Position-sensitive: must come before `source files.qip`.
-set_instance_assignment -name MAX_FANOUT 8 -to {*|gba_memorymux:igba_memorymux|gb_bus_out.Adr*}
-# [MiSTer-DB9 END]
-
 source sys/sys.tcl
 source sys/sys_analog.tcl
 source files.qip
