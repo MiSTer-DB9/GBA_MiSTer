@@ -49,18 +49,15 @@ set_global_assignment -name PERIPHERY_TO_CORE_PLACEMENT_AND_ROUTING_OPTIMIZATION
 set_global_assignment -name PHYSICAL_SYNTHESIS_ASYNCHRONOUS_SIGNAL_PIPELINING ON
 set_global_assignment -name ALM_REGISTER_PACKING_EFFORT LOW
 set_global_assignment -name PLACEMENT_EFFORT_MULTIPLIER 1.0
-set_global_assignment -name SEED 1
-set_global_assignment -name VERILOG_MACRO "MISTER_FB=1"
-
-# [MiSTer-DB9 BEGIN] - Quartus Lite fitter workaround
-# Force register duplication on high-fanout gb_bus_out.Adr to relieve
-# Lite-fitter setup violation on `gb_bus_out.Adr -> rotate_data` barrel
-# rotator. Without this, Lite produces ~1.2 ns negative slack on clk_sys
-# and SDRAM/VRAM data corrupts -> flickering colored lines on screen.
-# Brings Lite 17.0.2 timing to parity with Standard 17.0.2.
-# Position-sensitive: must come before `source files.qip`.
-set_instance_assignment -name MAX_FANOUT 8 -to {*|gba_memorymux:igba_memorymux|gb_bus_out.Adr*}
+# [MiSTer-DB9 BEGIN] - Fitter routing congestion fix
+# At ~82% ALM / 84% RAM / 96% DSP, seed 1 hits Critical Warning (188026)
+# "Fitter failed to route" (Warning 16618 routing congestion).
+# Local sweep (1..7): seed 1 fails; seeds 2..7 route. Seed 2 has the
+# cleanest STA (worst-case slack -0.009 ns on pll_hdmi).
+# CI evidence: run 26516030000 / commit 945a9cf.
+set_global_assignment -name SEED 2
 # [MiSTer-DB9 END]
+set_global_assignment -name VERILOG_MACRO "MISTER_FB=1"
 
 source sys/sys.tcl
 source sys/sys_analog.tcl
