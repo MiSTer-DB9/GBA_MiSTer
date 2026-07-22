@@ -74,7 +74,8 @@ entity gba_memorymux is
       MaxPakAddr           : in     std_logic_vector(24 downto 0);
       SramFlashEnable      : in     std_logic;
       memory_remap         : in     std_logic;
-      
+      matrix_mapper        : in     std_logic;
+
       bitmapdrawmode       : in     std_logic;
                                     
       VRAM_Lo_addr         : out    integer range 0 to 16383;
@@ -151,6 +152,8 @@ architecture arch of gba_memorymux is
       WRITE_VRAM,
       VRAMWAITWRITE,
       WRITE_OAM,
+      MATRIX_LOOKUP,
+      MATRIX_REMAP,
       EEPROMREAD,
       EEPROM_WAITREAD,
       EEPROMWRITE,
@@ -200,10 +203,21 @@ architecture arch of gba_memorymux is
    
    -- gamepak cache
    signal cache_read_enable  : std_logic := '0';
-   signal cache_read_addr    : std_logic_vector(22 downto 0);
+   signal cache_read_addr    : std_logic_vector(23 downto 0);
    signal cache_read_data    : std_logic_vector(31 downto 0);
    signal cache_read_done    : std_logic;
    signal cache_read_full    : std_logic_vector(63 downto 0);
+
+   -- Matrix/3D Memory mapper used by 64MB GBA Video carts.
+   type t_matrix_map_array is array(0 to 15) of unsigned(16 downto 0);
+   signal matrix_map        : t_matrix_map_array := (others => (others => '0'));
+   signal matrix_cmd           : std_logic_vector(31 downto 0) := (others => '0');
+   signal matrix_paddr         : std_logic_vector(31 downto 0) := (others => '0');
+   signal matrix_vaddr         : std_logic_vector(31 downto 0) := (others => '0');
+   signal matrix_blocks        : unsigned(14 downto 0) := (others => '0');
+   signal matrix_remap_slot    : unsigned(3 downto 0) := (others => '0');
+   signal matrix_remap_pbase   : unsigned(16 downto 0) := (others => '0');
+   signal matrix_remap_count   : unsigned(3 downto 0) := (others => '0');
    
    -- EEPROM
    type tEEPROMSTATE is
@@ -314,7 +328,7 @@ begin
    generic map
    (
       SIZE                     => 1024,
-      SIZEBASEBITS             => 23,
+      SIZEBASEBITS             => 24,
       BITWIDTH                 => 32,
       Softmap_GBA_Gamerom_ADDR => Softmap_GBA_Gamerom_ADDR
    )
@@ -362,6 +376,11 @@ begin
    process (clk100)
       variable palette_we : std_logic_vector(3 downto 0);
       variable VRAM_be    : std_logic_vector(3 downto 0);
+      variable matrix_phys_block : unsigned(16 downto 0);
+      variable matrix_phys_dword : unsigned(23 downto 0);
+      variable matrix_reg_value  : std_logic_vector(31 downto 0);
+      variable matrix_read_block : unsigned(3 downto 0);
+      variable matrix_size_blocks : unsigned(3 downto 0);
    begin
       if rising_edge(clk100) then
       
@@ -381,6 +400,29 @@ begin
             flashReadState  <= tFLASHSTATE'VAL(to_integer(unsigned(SAVESTATE_FLASH(16 downto 13))));
             
             sdram_addr_buf  <= (others => '1');
+            matrix_cmd      <= (others => '0');
+            matrix_paddr    <= (others => '0');
+            matrix_vaddr    <= (others => '0');
+            matrix_blocks   <= (others => '0');
+            matrix_remap_slot  <= (others => '0');
+            matrix_remap_pbase <= (others => '0');
+            matrix_remap_count <= (others => '0');
+            matrix_map(0)  <= to_unsigned(0, 17);
+            matrix_map(1)  <= to_unsigned(1, 17);
+            matrix_map(2)  <= to_unsigned(2, 17);
+            matrix_map(3)  <= to_unsigned(3, 17);
+            matrix_map(4)  <= to_unsigned(4, 17);
+            matrix_map(5)  <= to_unsigned(5, 17);
+            matrix_map(6)  <= to_unsigned(6, 17);
+            matrix_map(7)  <= to_unsigned(7, 17);
+            matrix_map(8)  <= to_unsigned(1, 17);
+            matrix_map(9)  <= to_unsigned(2, 17);
+            matrix_map(10) <= to_unsigned(3, 17);
+            matrix_map(11) <= to_unsigned(4, 17);
+            matrix_map(12) <= to_unsigned(5, 17);
+            matrix_map(13) <= to_unsigned(6, 17);
+            matrix_map(14) <= to_unsigned(7, 17);
+            matrix_map(15) <= to_unsigned(8, 17);
             state           <= IDLE;
          end if;
          
@@ -525,7 +567,9 @@ begin
                               --bus_out_rnw  <= '1';
                               --bus_out_ena  <= '1';
                               --state             <= WAIT_PROCBUS;
-                              if (unsigned(mem_bus_Adr(24 downto 2)) >= unsigned(MaxPakAddr)) then
+                              if (matrix_mapper = '1' and mem_bus_Adr(24 downto 13) = x"000") then
+                                 state             <= MATRIX_LOOKUP;
+                              elsif (unsigned(mem_bus_Adr(24 downto 2)) >= unsigned(MaxPakAddr)) then
                                  state       <= READAFTERPAK;
                               elsif (sdram_addr_buf = mem_bus_Adr(24 downto 3) and mem_bus_Adr(0) = '0' and mem_bus_acc = ACCESS_16BIT) then
                                  mem_bus_done <= '1'; 
@@ -552,9 +596,9 @@ begin
                               else
                                  cache_read_enable <= '1';
                                  if (memory_remap = '1') then
-                                    cache_read_addr   <= "00000" & mem_bus_Adr(19 downto 2);
+                                    cache_read_addr   <= '0' & "00000" & mem_bus_Adr(19 downto 2);
                                  else
-                                    cache_read_addr   <= mem_bus_Adr(24 downto 2);
+                                    cache_read_addr   <= '0' & mem_bus_Adr(24 downto 2);
                                  end if;
                                  state             <= WAIT_SDRAM;
                               end if;
@@ -622,13 +666,59 @@ begin
                            when x"5" => state <= WRITE_PALETTE;   mem_bus_done <= '1';
                            when x"6" => state <= WRITE_VRAM;      mem_bus_done <= not vram_blocked or mem_bus_Adr(16); vramwait <= vram_blocked;
                            when x"7" => state <= WRITE_OAM;       mem_bus_done <= '1';
-                           when x"8" =>
-                              mem_bus_done <= '1';
-                              if (specialmodule = '1') then
-                                 if (unsigned(mem_bus_Adr(27 downto 0)) >= 16#80000C4# and unsigned(mem_bus_Adr(27 downto 0)) <= 16#80000C8#) then
-                                    GPIO_writeEna <= '1';
-                                    GPIO_addr     <= std_logic_vector(to_unsigned(to_integer(unsigned(mem_bus_Adr(3 downto 1))) - 4 / 2, 2));
-                                    GPIO_Dout     <= mem_bus_dout(3 downto 0);
+                           when x"8" | x"9" | x"A" | x"B" | x"C" =>
+                              if (matrix_mapper = '1' and mem_bus_Adr(24 downto 8) = std_logic_vector(to_unsigned(16#8001#, 17))) then
+                                 case (mem_bus_Adr(5 downto 2)) is
+                                    when "0000" => matrix_reg_value := matrix_cmd;
+                                    when "0001" => matrix_reg_value := matrix_paddr;
+                                    when "0010" => matrix_reg_value := matrix_vaddr;
+                                    when "0011" => matrix_reg_value := x"0000" & '0' & std_logic_vector(matrix_blocks);
+                                    when others => matrix_reg_value := (others => '0');
+                                 end case;
+
+                                 if (mem_bus_acc = ACCESS_32BIT) then
+                                    matrix_reg_value := mem_bus_dout;
+                                 elsif (mem_bus_acc = ACCESS_16BIT) then
+                                    matrix_reg_value(15 downto 0) := mem_bus_dout(15 downto 0);
+                                 end if;
+
+                                 case (mem_bus_Adr(5 downto 2)) is
+                                    when "0000" =>
+                                       matrix_cmd <= matrix_reg_value;
+                                       sdram_addr_buf <= (others => '1');
+                                       if ((matrix_reg_value = x"00000001" or matrix_reg_value = x"00000011") and matrix_blocks /= to_unsigned(0, matrix_blocks'length)) then
+                                          matrix_size_blocks := matrix_blocks(3 downto 0);
+                                          if (matrix_size_blocks /= to_unsigned(0, matrix_size_blocks'length)) then
+                                             matrix_remap_slot  <= unsigned(matrix_vaddr(12 downto 9));
+                                             matrix_remap_pbase <= unsigned(matrix_paddr(25 downto 9));
+                                             matrix_remap_count <= matrix_size_blocks;
+                                             state              <= MATRIX_REMAP;
+                                          else
+                                             mem_bus_done <= '1';
+                                          end if;
+                                       else
+                                          mem_bus_done <= '1';
+                                       end if;
+                                    when "0001" =>
+                                       matrix_paddr  <= matrix_reg_value and x"03FFFFFF";
+                                       mem_bus_done  <= '1';
+                                    when "0010" =>
+                                       matrix_vaddr  <= matrix_reg_value and x"007FFFFF";
+                                       mem_bus_done  <= '1';
+                                    when "0011" =>
+                                       matrix_blocks <= unsigned(matrix_reg_value(14 downto 0));
+                                       mem_bus_done  <= '1';
+                                    when others =>
+                                       mem_bus_done <= '1';
+                                 end case;
+                              else
+                                 mem_bus_done <= '1';
+                                 if (mem_bus_Adr(27 downto 24) = x"8" and specialmodule = '1') then
+                                    if (unsigned(mem_bus_Adr(27 downto 0)) >= 16#80000C4# and unsigned(mem_bus_Adr(27 downto 0)) <= 16#80000C8#) then
+                                       GPIO_writeEna <= '1';
+                                       GPIO_addr     <= std_logic_vector(to_unsigned(to_integer(unsigned(mem_bus_Adr(3 downto 1))) - 4 / 2, 2));
+                                       GPIO_Dout     <= mem_bus_dout(3 downto 0);
+                                    end if;
                                  end if;
                               end if;
                            
@@ -658,7 +748,27 @@ begin
                
             -- reading
                
-            when READBIOS => 
+            when MATRIX_REMAP =>
+               matrix_map(to_integer(matrix_remap_slot)) <= matrix_remap_pbase;
+               if (matrix_remap_count = to_unsigned(1, matrix_remap_count'length)) then
+                  mem_bus_done <= '1';
+                  state        <= IDLE;
+               else
+                  matrix_remap_slot  <= matrix_remap_slot + 1;
+                  matrix_remap_pbase <= matrix_remap_pbase + 1;
+                  matrix_remap_count <= matrix_remap_count - 1;
+               end if;
+
+            when MATRIX_LOOKUP =>
+               matrix_read_block := unsigned(adr_save(12 downto 9));
+               matrix_phys_block := matrix_map(to_integer(matrix_read_block));
+
+               matrix_phys_dword := unsigned(std_logic_vector(matrix_phys_block) & adr_save(8 downto 2));
+               cache_read_addr    <= std_logic_vector(matrix_phys_dword);
+               cache_read_enable  <= '1';
+               state              <= WAIT_SDRAM;
+
+            when READBIOS =>
                bios_data_last <= bios_data;
                if (acc_save = ACCESS_8BIT or acc_save = ACCESS_16BIT) then
                   rotate_data  <= bios_data;
