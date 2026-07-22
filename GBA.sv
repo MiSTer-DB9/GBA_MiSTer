@@ -660,6 +660,7 @@ gba
 	.CyclesVsyncSpeed(),              // debug only for speed measurement, keep open
 	.SramFlashEnable(~sram_quirk),
 	.memory_remap(memory_remap_quirk),
+	.matrix_mapper(last_addr[26]),
    .increaseSSHeaderCount(!status[36]),
    .save_state(ss_save),
    .load_state(ss_load),
@@ -861,11 +862,12 @@ always @(posedge clk_sys) begin
    if(reset) sdram_en <= (!status[15:14]) ? |sdram_sz[2:0] : status[14];
    
    if (sdram_sz[1:0] == 2'b01 && last_addr[25]) sdram_en <= 1'b0; // use ddr3 if game is 32mbyte in size
+   if (last_addr[26]) sdram_en <= 1'b0; // 64MB Matrix/3D Memory carts must stay in DDR3
    
 end
 
 
-wire [25:2] sdram_addr;
+wire [26:2] sdram_addr;
 wire [31:0] sdram_dout1 = sdram_en ? sdr_sdram_dout1 : ddr_sdram_dout1;
 wire [31:0] sdram_dout2 = sdram_en ? sdr_sdram_dout2 : ddr_sdram_dout2;
 wire        sdram_ack   = sdram_en ? sdr_sdram_ack   : ddr_sdram_ack;
@@ -925,6 +927,7 @@ end
 wire [31:0] ddr_sdram_dout1, ddr_sdram_dout2, ddr_bus_dout;
 wire [15:0] ddr_bram_din;
 wire        ddr_sdram_ack, ddr_bus_ack, ddr_bram_ack;
+wire [27:1] ddram_ch1_addr = romcopy_active ? {1'b0, romcopy_readpos[26:1]+ROM_START[26:1]} : {1'b0, sdram_addr, 1'b0};
 
 wire [63:0] ss_dout, ss_din;
 wire [27:2] ss_addr;
@@ -936,7 +939,7 @@ ddram ddram
 (
 	.*,
 
-	.ch1_addr(romcopy_active ? romcopy_readpos[26:1]+ROM_START[26:1] : {sdram_addr, 1'b0}),
+	.ch1_addr(ddram_ch1_addr),
 	.ch1_din(16'b0),
 	.ch1_dout({ddr_sdram_dout2, ddr_sdram_dout1}),
 	.ch1_req(romcopy_active ? romcopy_ddrreq : sdram_req & ~sdram_en),
