@@ -103,6 +103,7 @@ jobs:
         MAIN_BRANCH: GBA2P
         UPSTREAM_REPO: https://github.com/MiSTer-devel/GBA_MiSTer.git
         UPSTREAM_BRANCH: GBA2P
+        UPSTREAM_RELEASES_DIR: releases
         BUILD_SHA: ${{ steps.meta.outputs.build_sha }}
 
   build:
